@@ -29,7 +29,11 @@ class ConditionalGenerator(object):
 
             else:
                 assert 0
-
+        """
+        Above loop is taking argmax of the one hot encoding cols (basically columns where 1 is the value) 
+        and is storing in self.model. This is done only for the categorical variables
+        """
+        
         assert start == data.shape[1]
 
         self.interval = []
@@ -63,26 +67,38 @@ class ConditionalGenerator(object):
 
         self.interval = np.asarray(self.interval)
 
+        """
+        Above loop calculates probability for categorical variables. We can use log transform if required
+        """
+    
     def random_choice_prob_index(self, idx):
-        a = self.p[idx]
-        r = np.expand_dims(np.random.rand(a.shape[0]), axis=1)
+        a = self.p[idx]                                         #find porbability associated with the random feature
+        r = np.expand_dims(np.random.rand(a.shape[0]), axis=1)  # Using uniform prob distribution to assign values to the categories
         return (a.cumsum(axis=1) > r).argmax(axis=1)
+    """
+    Above function gives the index of category of the corresponding feature that we are setting = 1 
+    """
 
     def sample(self, batch):
         if self.n_col == 0:
             return None
 
         batch = batch
-        idx = np.random.choice(np.arange(self.n_col), batch)
+        idx = np.random.choice(np.arange(self.n_col), batch)    # picking random feature 
 
-        vec1 = np.zeros((batch, self.n_opt), dtype='float32')
+        vec1 = np.zeros((batch, self.n_opt), dtype='float32')   
         mask1 = np.zeros((batch, self.n_col), dtype='float32')
         mask1[np.arange(batch), idx] = 1
-        opt1prime = self.random_choice_prob_index(idx)
-        opt1 = self.interval[idx, 0] + opt1prime
-        vec1[np.arange(batch), opt1] = 1
+        opt1prime = self.random_choice_prob_index(idx)          #column index of category chosen wrt to feature index
+        opt1 = self.interval[idx, 0] + opt1prime                #column index of catgoery chosen in the condtion matrix.
+        vec1[np.arange(batch), opt1] = 1                        #condition matrix
 
         return vec1, mask1, idx, opt1prime
+
+    """
+    Above function returns sampled condtion matrix, mask (one hot encoding of conditioned feature), index of conditioend feature, 
+    column index of catgoery chosen in the condtion matrix.
+    """
 
     def sample_zero(self, batch):
         if self.n_col == 0:

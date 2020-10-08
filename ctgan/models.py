@@ -59,8 +59,12 @@ class Residual(Module):
 
 
 class Generator(Module):
+
+    """
+    Simple Generator Module with Residual bloacks as shown in the papers
+    """
     def __init__(self, embedding_dim, gen_dims, data_dim):
-        super(Generator, self).__init__()
+        super().__init__()
         dim = embedding_dim
         seq = []
         for item in list(gen_dims):
