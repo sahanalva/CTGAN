@@ -74,7 +74,13 @@ class ConditionalGenerator(object):
     def random_choice_prob_index(self, idx):
         a = self.p[idx]                                         #find porbability associated with the random feature
         r = np.expand_dims(np.random.rand(a.shape[0]), axis=1)  # Using uniform prob distribution to assign values to the categories
-        return (a.cumsum(axis=1) > r).argmax(axis=1)
+
+        val = np.unique(idx)
+        col_len = np.count_nonzero(self.p[val])
+        col_val = np.random.randint(low=0, high=col_len) * np.ones_like(idx)
+
+        return col_val
+        #return (a.cumsum(axis=1) > r).argmax(axis=1)
     """
     Above function gives the index of category of the corresponding feature that we are setting = 1 
     """
@@ -85,6 +91,8 @@ class ConditionalGenerator(object):
 
         batch = batch
         idx = np.random.choice(np.arange(self.n_col), batch)    # picking random feature 
+        
+        idx = np.random.randint(low=0, high=self.n_col) * np.ones_like(idx) #temp
 
         vec1 = np.zeros((batch, self.n_opt), dtype='float32')   
         mask1 = np.zeros((batch, self.n_col), dtype='float32')
@@ -106,9 +114,11 @@ class ConditionalGenerator(object):
 
         vec = np.zeros((batch, self.n_opt), dtype='float32')
         idx = np.random.choice(np.arange(self.n_col), batch)
+        mask1 = np.zeros((batch, self.n_col), dtype='float32')
+        mask1[np.arange(batch), idx] = 1
         for i in range(batch):
             col = idx[i]
             pick = int(np.random.choice(self.model[col]))
             vec[i, pick + self.interval[col, 0]] = 1
-
-        return vec
+        #print("conditional",vec, mask1)
+        return vec,mask1
