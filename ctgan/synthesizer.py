@@ -42,7 +42,7 @@ class CTGANSynthesizer(object):
 
         self.l2scale = l2scale
         self.batch_size = batch_size
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device("cpu") #torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     def _apply_activate(self, data):
         data_t = []
