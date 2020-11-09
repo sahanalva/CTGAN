@@ -40,7 +40,7 @@ class DataTransformer(object):
             'name': column,
             'model': gm,
             'components': components,
-            'output_info': [(1, 'tanh'), (num_components, 'softmax')],
+            'output_info': [(1, 'tanh',column), (num_components, 'softmax',column)],
             'output_dimensions': 1 + num_components,
         }
 
@@ -52,7 +52,7 @@ class DataTransformer(object):
         return {
             'name': column,
             'encoder': ohe,
-            'output_info': [(categories, 'softmax')],
+            'output_info': [(categories, 'softmax',column)],
             'output_dimensions': categories
         }
 

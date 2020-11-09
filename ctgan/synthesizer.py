@@ -96,7 +96,7 @@ class CTGANSynthesizer(object):
 
         return (loss * m).sum() / data.size()[0]
 
-    def fit(self, train_data, discrete_columns=tuple(), epochs=300, log_frequency=True):
+    def fit(self, train_data, discrete_columns=tuple(), conditional_cols = None, epochs=300, log_frequency=True):
         """Fit the CTGAN Synthesizer models to the training data.
 
         Args:
@@ -126,7 +126,7 @@ class CTGANSynthesizer(object):
         self.cond_generator = ConditionalGenerator(
             train_data,
             self.transformer.output_info,
-            log_frequency
+            log_frequency, conditional_cols
         )
 
         #print("synth", self.cond_generator.n_opt, self.embedding_dim)
