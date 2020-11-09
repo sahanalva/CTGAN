@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import torch
-
+import synthesizer
 
 df = pd.read_csv("~/ctgan_all/ctgan_data/toy_data.csv")
 required_cols = ['applicant_sex', 'applicant_income_000s', 'applicant_sex_name','agency_abbr']
