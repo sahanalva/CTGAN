@@ -69,7 +69,7 @@ class ConditionalGenerator(object):
                 if conditional_cols != None:
                     if item[2] in conditional_cols:
                         self.conditional_col_index[self.n_col] = (self.n_opt, item[0])
-                print("Umbrella Sampling for column:",item[2]})
+                print("Umbrella Sampling for column:",item[2])
                 self.class_samples.append(self.umbrella_sampling(tau, tmp))
                 self.n_col += 1
                 self.n_opt += item[0]
