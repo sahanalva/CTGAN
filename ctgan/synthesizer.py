@@ -92,7 +92,6 @@ class CTGANSynthesizer(object):
                 assert 0
 
         loss = torch.stack(loss, dim=1)
-        #print(data,c)
 
         return (loss * m).sum() / data.size()[0]
 
@@ -114,12 +113,10 @@ class CTGANSynthesizer(object):
                 Whether to use log frequency of categorical levels in conditional
                 sampling. Defaults to ``True``.
         """
-        #print("synth data",train_data.head(), train_data.shape)
         self.transformer = DataTransformer()
         self.transformer.fit(train_data, discrete_columns)
         train_data = self.transformer.transform(train_data)
 
-        #print("synth output info",self.transformer.output_info)
         data_sampler = Sampler(train_data, self.transformer.output_info)
 
         data_dim = self.transformer.output_dimensions
@@ -129,17 +126,13 @@ class CTGANSynthesizer(object):
             log_frequency, conditional_cols
         )
 
-        #print("synth", self.cond_generator.n_opt, self.embedding_dim)
         self.generator = Generator(
             self.embedding_dim + self.cond_generator.n_opt,
             self.gen_dim,
             data_dim
         ).to(self.device)
 
-        # discriminator = Discriminator(
-        #     data_dim + self.cond_generator.n_opt,
-        #     self.dis_dim
-        # ).to(self.device)
+
 
         discriminator = Discriminator(
             data_dim,
@@ -176,12 +169,10 @@ class CTGANSynthesizer(object):
                     m1 = torch.from_numpy(m1).to(self.device)
                     fakez = torch.cat([fakez, c1], dim=1)
 
-                    #print("C1,",c1, torch.sum(c1, dim=1))
                     perm = np.arange(self.batch_size)
                     np.random.shuffle(perm)
                     real = data_sampler.sample(self.batch_size, col[perm], opt[perm])
                     c2 = c1[perm]
-                    #print("synth real c1", real, c1, c2)
 
                 fake = self.generator(fakez)
                 fakeact = self._apply_activate(fake)
@@ -194,8 +185,7 @@ class CTGANSynthesizer(object):
                 real = torch.from_numpy(real.astype('float32')).to(self.device)
 
                 if c1 is not None:
-                    # fake_cat = torch.cat([fakeact, c1], dim=1)
-                    # real_cat = torch.cat([real, c2], dim=1)
+
                     real_cat = real
                     fake_cat = fakeact
 
@@ -249,7 +239,6 @@ class CTGANSynthesizer(object):
                 fakeact = self._apply_activate(fake)
 
                 if c1 is not None:
-                    #y_fake = discriminator(torch.cat([fakeact, c1], dim=1))
                     y_fake = discriminator(fakeact)
                     conditional_y_fake = conditonal_discriminator(torch.cat([y_fake, c1], dim=1))
                 else:
@@ -261,7 +250,6 @@ class CTGANSynthesizer(object):
                 else:
                     cross_entropy = self._cond_loss(fake, c1, m1)
 
-                #loss_g = -torch.mean(y_fake) + cross_entropy
                 loss_g = -torch.mean(conditional_y_fake) +  cross_entropy
 
 
