@@ -69,8 +69,8 @@ class ConditionalGenerator(object):
                 if conditional_cols != None:
                     if item[2] in conditional_cols:
                         self.conditional_col_index[self.n_col] = (self.n_opt, item[0])
-                print("Umbrella Sampling for column:",item[2])
-                self.class_samples.append(self.umbrella_sampling(tau, tmp))
+                #print("Umbrella Sampling for column:",item[2])
+                #self.class_samples.append(self.umbrella_sampling(tau, tmp))
                 self.n_col += 1
                 self.n_opt += item[0]
                 
@@ -88,9 +88,9 @@ class ConditionalGenerator(object):
 
 
         val = np.asscalar(np.unique(idx))
-        #col_len = np.count_nonzero(self.p[val])
-        #col_val = np.random.randint(low=0, high=col_len) * np.ones_like(idx)
-        col_val = np.random.choice(self.class_samples[val]) * np.ones_like(idx)
+        col_len = np.count_nonzero(self.p[val])
+        col_val = np.random.randint(low=0, high=col_len) * np.ones_like(idx)
+        #col_val = np.random.choice(self.class_samples[val]) * np.ones_like(idx)
         
         return col_val
     """
@@ -140,7 +140,7 @@ class ConditionalGenerator(object):
     
     def gumbel_softmax_fn(self, p, tau,class_prob):
 
-        distribution = torch.distributions.RelaxedOneHotCategorical(torch.tensor(tau), torch.tensor(class_prob))
+        distribution = torch.distributions.RelaxedOneHotCategorical(torch.tensor(tau).float(), torch.tensor(class_prob).float())
 
         return distribution.log_prob(torch.tensor(p))
 

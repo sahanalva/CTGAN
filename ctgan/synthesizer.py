@@ -2,11 +2,13 @@ import numpy as np
 import torch
 from torch import optim
 from torch.nn import functional
-
+import xgboost as xgb
 from conditional import ConditionalGenerator
 from models import Discriminator, Generator
 from sampler import Sampler
 from transformer import DataTransformer
+import pickle
+import pandas as pd
 
 
 class CTGANSynthesizer(object):
@@ -95,7 +97,7 @@ class CTGANSynthesizer(object):
 
         return (loss * m).sum() / data.size()[0]
 
-    def fit(self, train_data, discrete_columns=tuple(), conditional_cols = None, epochs=300, log_frequency=True):
+    def fit(self, train_data, prefered_label, black_box_path, discrete_columns=tuple(),conditional_cols = None, epochs=300, log_frequency=True):
         """Fit the CTGAN Synthesizer models to the training data.
 
         Args:
@@ -113,6 +115,10 @@ class CTGANSynthesizer(object):
                 Whether to use log frequency of categorical levels in conditional
                 sampling. Defaults to ``True``.
         """
+
+        self.prefered_label = prefered_label
+        self.blackbox_model = pickle.load(open(black_box_path, "rb"))
+
         self.transformer = DataTransformer()
         self.transformer.fit(train_data, discrete_columns)
         train_data = self.transformer.transform(train_data)
@@ -157,7 +163,10 @@ class CTGANSynthesizer(object):
 
         steps_per_epoch = max(len(train_data) // self.batch_size, 1)
         for i in range(epochs):
+            flip_loss_list = []
+            real_flip_loss_list = []
             for id_ in range(steps_per_epoch):
+                
                 fakez = torch.normal(mean=mean, std=std)
                 condvec = self.cond_generator.sample(self.batch_size)
                 if condvec is None:
@@ -237,6 +246,7 @@ class CTGANSynthesizer(object):
 
                 fake = self.generator(fakez)
                 fakeact = self._apply_activate(fake)
+                
 
                 if c1 is not None:
                     y_fake = discriminator(fakeact)
@@ -250,17 +260,39 @@ class CTGANSynthesizer(object):
                 else:
                     cross_entropy = self._cond_loss(fake, c1, m1)
 
-                loss_g = -torch.mean(conditional_y_fake) +  cross_entropy
+                fake_act_inv = self.transformer.inverse_transform(fakeact.detach().cpu().numpy(), None)
+                fake_act_inv = _factorize_categoricals(fake_act_inv, discrete_columns)
+                fake_act_inv = xgb.DMatrix(data = fake_act_inv)
+                black_box_pred_prob = self.blackbox_model.predict(fake_act_inv)
+                #black_box_pred_prob = torch.from_numpy(np.stack([1-black_box_pred_prob,black_box_pred_prob], axis = -1))
+                #flip_loss = torch.nn.CrossEntropyLoss()(black_box_pred_prob, torch.tensor([self.prefered_label]).repeat(self.batch_size))
+                flip_loss = sum(-np.log(black_box_pred_prob))/self.batch_size
 
+
+                real_inv = self.transformer.inverse_transform(real.detach().cpu().numpy(), None)
+                real_inv = _factorize_categoricals(real_inv, discrete_columns)
+                real_inv = xgb.DMatrix(data = real_inv)
+                real_pred_prob = self.blackbox_model.predict(real_inv)
+                #black_box_pred_prob = torch.from_numpy(np.stack([1-black_box_pred_prob,black_box_pred_prob], axis = -1))
+                #flip_loss = torch.nn.CrossEntropyLoss()(black_box_pred_prob, torch.tensor([self.prefered_label]).repeat(self.batch_size))
+                real_flip_loss = sum(-np.log(real_pred_prob))/self.batch_size
+
+                
+                loss_g = -torch.mean(conditional_y_fake) +  cross_entropy + 10*flip_loss
+                #print(f"Base Loss:{-torch.mean(conditional_y_fake)}, Conditional Loss:{cross_entropy}, 10Flip Loss:{flip_loss}")
+                flip_loss_list.append(flip_loss)
+                real_flip_loss_list.append(real_flip_loss)
 
                 optimizerG.zero_grad()
                 loss_g.backward()
                 optimizerG.step()
 
+            print(f"Generated flip loss {np.mean(flip_loss_list)}, Real flip loss {np.mean(real_flip_loss_list)}")
             print("Condtional Cross Entropy Loss", cross_entropy)
             print("Epoch %d, Loss G: %.4f, Loss D: %.4f, Loss Conditional D: %.4f" %
                   (i + 1, loss_g.detach().cpu(), loss_d.detach().cpu(), loss_condtional_d.detach().cpu()),
                   flush=True)
+            
 
     def sample(self, n, col_index = None):
         """Sample data similar to the training data.
@@ -300,3 +332,8 @@ class CTGANSynthesizer(object):
         data = data[:n]
 
         return self.transformer.inverse_transform(data, None)
+    
+def _factorize_categoricals(df, discrete_columns):
+    for col in discrete_columns:
+        df[col], _ = pd.factorize(df[col])
+    return df 
